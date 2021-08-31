@@ -1,0 +1,444 @@
+library("dada2"); packageVersion("dada2")
+library("phyloseq"); packageVersion("phyloseq")
+library("ggplot2"); packageVersion("ggplot2")
+library("knitr")
+library("BiocStyle")
+library("GenomicRanges")
+library("BSgenome.Hsapiens.UCSC.hg19")
+library("BSgenome")
+library("RNAseqData.HNRNPC.bam.chr14")
+library("VariantAnnotation")
+library("Rsamtools")
+library("ShortRead")
+library("DelayedArray")
+library("matrixStats")
+library("GenomeInfoDb")
+library("GenomicAlignments")
+library("SummarizedExperiment")
+library("Biobase")
+library("sequencing")
+library("dada2"); packageVersion("dada2")
+library("phyloseq"); packageVersion("phyloseq")
+library("ggplot2"); packageVersion("ggplot2")
+library("GenomicRanges")
+library("BSgenome.Hsapiens.UCSC.hg19")
+library("BSgenome")
+library("RNAseqData.HNRNPC.bam.chr14")
+library("VariantAnnotation")
+library("Rsamtools")
+library("ShortRead")
+library("DelayedArray")
+library("matrixStats")
+library("GenomeInfoDb")
+library("GenomicAlignments")
+library("SummarizedExperiment")
+library("Biobase")
+library("sequencing")
+library("BiocGenerics")
+library("msa")
+path <- "/Users/nqhuynh/Documents/rdna"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2.fastq.gz", full.names = TRUE))
+sample.names <- make.unique(sapply(strsplit(basename(fnFs), "_"), `[`, 1))
+sample.names
+sample.namesfull <- sapply(strsplit(basename(fnFs), "_16S"), `[`, 1)
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+head(path)
+load("~/Documents/rdna/4/night.RData")
+head(out)
+errF <- learnErrors(filtFs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+plotErrors(errR, nominalQ=TRUE)
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+plotErrors(errR, nominalQ=TRUE)
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+dadaFs[[1]]
+dadaRs[[1]]
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+head(mergers[[1]])
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+table(nchar(getSequences(seqtab)))
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+sum(seqtab.nochim)/sum(seqtab)
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled", "nonchim")
+rownames(track) <- sample.names
+head(track)
+taxa.print <- taxaSp
+rownames(taxa.print) <- NULL
+head(taxa.print)
+envdata <- read.table("/Users/nqhuynh/Documents/rdna/3/data1.txt", header=TRUE, fill=TRUE, row.names=1, sep="\t", dec=",")
+envdata
+env_Full_names <- rownames(envdata1)
+env_Full_names <- rownames(envdata)
+env_Short_names <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`,1))
+env_Names <- cbind(Short_Names = env_Short_names, env_Full_names)
+Sequencing_names <- cbind(Short_Names = sample.names, S_Full_Names = sample.namesfull)
+Name_list <- merge(Sequencing_names, env_Names, all = T, all.x = TRUE)
+View(Name_list)
+write.table(Name_list, "/Users/nqhuynh/Documents/Name_list.txt", sep="\t")
+rownames(envdata) <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`, 1))
+rownames(envdata)
+DAT <- sample_data(envdata)
+DAT
+ps1 <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), tax_table(taxaSp))
+ps1 <- merge_phyloseq(ps1, DAT)
+ps1
+#change nom seq/OTU
+taxa_names(ps1)
+taxa_names(ps1) <- paste0("OTU", seq(ntaxa(ps1)))
+# Extract abundance matrix from the phyloseq object
+OTU1 = as(otu_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){OTU1 <- t(OTU1)}
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+# Extract abundance matrix from the phyloseq object
+TAX = as(tax_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){TAX <- t(TAX)}
+# Coerce to data.frame
+TAXdf = as.data.frame(TAX)
+# Extract abundance matrix from the phyloseq object
+DAT1 = as(sample_data(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){DAT1 <- t(DAT1)}
+# Ghi các bảng OTU TAX DAT1 ra file .txt
+DAT1df = as.data.frame(DAT1)
+write.table(OTU1, "/Users/nqhuynh/Documents/1_OTU1.txt", sep="\t")
+write.table(TAX, "/Users/nqhuynh/Documents/1_TAX.txt", sep="\t")
+write.table(DAT1, "/Users/nqhuynh/Documents/1_DAT.txt", sep="\t")
+#change nom seq/OTU
+taxa_names(ps1)
+taxa_names(ps1) <- paste0("OTU", seq(ntaxa(ps1)))
+# Extract abundance matrix from the phyloseq object
+OTU1 = as(otu_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){OTU1 <- t(OTU1)}
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+# Extract abundance matrix from the phyloseq object
+TAX = as(tax_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){TAX <- t(TAX)}
+# Coerce to data.frame
+TAXdf = as.data.frame(TAX)
+# Extract abundance matrix from the phyloseq object
+DAT1 = as(sample_data(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){DAT1 <- t(DAT1)}
+# Ghi các bảng OTU TAX DAT1 ra file .txt
+DAT1df = as.data.frame(DAT1)
+write.table(OTU1, "/Users/nqhuynh/Documents/1_OTU1.txt", sep="\t")
+write.table(TAX, "/Users/nqhuynh/Documents/1_TAX.txt", sep="\t")
+write.table(DAT1, "/Users/nqhuynh/Documents/1_DAT.txt", sep="\t")
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+unlink('DADA2 Huong dan tieng viet-NQHuynh_cache', recursive = TRUE)
+knit_with_parameters('~/Documents/R_Script/DADA2 Huong dan tieng viet-NQHuynh.Rmd', encoding = 'UTF-8')
+fnFs <- sort(list.files(path, pattern="_R1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2.fastq.gz", full.names = TRUE))
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+# Chunk 1
+path <- "/Users/nqhuynh/Documents/rdna"
+list.files(path)
+# Chunk 2
+fnFs <- sort(list.files(path, pattern="_R1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2.fastq.gz", full.names = TRUE))
+# Chunk 3
+sample.names <- make.unique(sapply(strsplit(basename(fnFs), "_"), `[`, 1))
+sample.names
+sample.namesfull <- sapply(strsplit(basename(fnFs), "_16S"), `[`, 1)
+# Chunk 4
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+# Chunk 5
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+# Chunk 6
+head(out)
+# Chunk 7
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+# Chunk 8
+plotErrors(errF, nominalQ=TRUE)
+plotErrors(errR, nominalQ=TRUE)
+# Chunk 9
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+# Chunk 10
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+# Chunk 11
+dadaFs <- dada(derepFs, err=errF, multithread=TRUE)
+dadaRs <- dada(derepRs, err=errR, multithread=TRUE)
+# Chunk 12
+dadaFs[[1]]
+dadaRs[[1]]
+# Chunk 13
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+# Chunk 14
+head(mergers[[1]])
+# Chunk 15
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+# Chunk 16
+table(nchar(getSequences(seqtab)))
+# Chunk 17
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+sum(seqtab.nochim)/sum(seqtab)
+# Chunk 18
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled", "nonchim")
+rownames(track) <- sample.names
+head(track)
+# Chunk 19
+taxa.print <- taxaSp
+rownames(taxa.print) <- NULL
+head(taxa.print)
+# Chunk 20
+envdata <- read.table("/Users/nqhuynh/Documents/rdna/3/data1.txt", header=TRUE, fill=TRUE, row.names=1, sep="\t", dec=",")
+envdata
+# Chunk 21
+env_Full_names <- rownames(envdata)
+env_Short_names <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`,1))
+env_Names <- cbind(Short_Names = env_Short_names, env_Full_names)
+Sequencing_names <- cbind(Short_Names = sample.names, S_Full_Names = sample.namesfull)
+Name_list <- merge(Sequencing_names, env_Names, all = T, all.x = TRUE)
+View(Name_list)
+write.table(Name_list, "/file directory/Name_list.txt", sep="\t")
+# Chunk 22
+rownames(envdata) <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`, 1))
+rownames(envdata)
+DAT <- sample_data(envdata)
+DAT
+# Chunk 23
+ps1 <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), tax_table(taxaSp))
+ps1 <- merge_phyloseq(ps1, DAT)
+ps1
+# Chunk 24
+#change nom seq/OTU
+taxa_names(ps1)
+taxa_names(ps1) <- paste0("OTU", seq(ntaxa(ps1)))
+# Chunk 25
+# Extract abundance matrix from the phyloseq object
+OTU1 = as(otu_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){OTU1 <- t(OTU1)}
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+# Chunk 26
+# Extract abundance matrix from the phyloseq object
+TAX = as(tax_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){TAX <- t(TAX)}
+# Coerce to data.frame
+TAXdf = as.data.frame(TAX)
+# Chunk 27
+# Extract abundance matrix from the phyloseq object
+DAT1 = as(sample_data(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){DAT1 <- t(DAT1)}
+# Chunk 28
+DAT1df = as.data.frame(DAT1)
+write.table(OTU1, "/Users/nqhuynh/Documents/1_OTU1.txt", sep="\t")
+write.table(TAX, "/Users/nqhuynh/Documents/1_TAX.txt", sep="\t")
+write.table(DAT1, "/Users/nqhuynh/Documents/1_DAT.txt", sep="\t")
+load("~/Documents/rdna/4/night.RData")
+# Chunk 1
+path <- "/Users/nqhuynh/Documents/rdna"
+list.files(path)
+# Chunk 2
+fnFs <- sort(list.files(path, pattern="_R1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2.fastq.gz", full.names = TRUE))
+# Chunk 3
+sample.names <- make.unique(sapply(strsplit(basename(fnFs), "_"), `[`, 1))
+sample.names
+sample.namesfull <- sapply(strsplit(basename(fnFs), "_16S"), `[`, 1)
+# Chunk 4
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+# Chunk 5
+filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
+# Chunk 6
+envdata <- read.table("/Users/nqhuynh/Documents/rdna/3/data1.txt", header=TRUE, fill=TRUE, row.names=1, sep="\t", dec=",")
+envdata
+# Chunk 7
+env_Full_names <- rownames(envdata)
+env_Short_names <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`,1))
+env_Names <- cbind(Short_Names = env_Short_names, env_Full_names)
+Sequencing_names <- cbind(Short_Names = sample.names, S_Full_Names = sample.namesfull)
+Name_list <- merge(Sequencing_names, env_Names, all = T, all.x = TRUE)
+write.table(Name_list, "/file directory/Name_list.txt", sep="\t")
+# Chunk 8
+rownames(envdata) <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`, 1))
+rownames(envdata)
+DAT <- sample_data(envdata)
+DAT
+# Chunk 9
+ps1 <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), tax_table(taxaSp))
+ps1 <- merge_phyloseq(ps1, DAT)
+ps1
+# Chunk 10
+#change nom seq/OTU
+taxa_names(ps1)
+taxa_names(ps1) <- paste0("OTU", seq(ntaxa(ps1)))
+# Chunk 11
+# Extract abundance matrix from the phyloseq object
+OTU1 = as(otu_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){OTU1 <- t(OTU1)}
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+# Chunk 12
+# Extract abundance matrix from the phyloseq object
+TAX = as(tax_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){TAX <- t(TAX)}
+# Coerce to data.frame
+TAXdf = as.data.frame(TAX)
+# Chunk 13
+# Extract abundance matrix from the phyloseq object
+DAT1 = as(sample_data(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){DAT1 <- t(DAT1)}
+# Chunk 14
+DAT1df = as.data.frame(DAT1)
+write.table(OTU1, "/Users/nqhuynh/Documents/1_OTU1.txt", sep="\t")
+write.table(TAX, "/Users/nqhuynh/Documents/1_TAX.txt", sep="\t")
+write.table(DAT1, "/Users/nqhuynh/Documents/1_DAT.txt", sep="\t")
+path <- "/Users/nqhuynh/Documents/rdna"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2.fastq.gz", full.names = TRUE))
+sample.names <- make.unique(sapply(strsplit(basename(fnFs), "_"), `[`, 1))
+sample.names
+sample.namesfull <- sapply(strsplit(basename(fnFs), "_16S"), `[`, 1)
+plotQualityProfile(fnFs[1:2])
+head(out)
+head(out)
+head(out)
+head(out)
+errF <- learnErrors(filtFs, multithread=TRUE)
+head(out)
+errF <- learnErrors(filtFs, multithread=TRUE)
+library("dada2"); packageVersion("dada2")
+library("phyloseq"); packageVersion("phyloseq")
+library("ggplot2"); packageVersion("ggplot2")
+library("GenomicRanges")
+library("BSgenome.Hsapiens.UCSC.hg19")
+library("BSgenome")
+library("RNAseqData.HNRNPC.bam.chr14")
+library("VariantAnnotation")
+library("Rsamtools")
+library("ShortRead")
+library("DelayedArray")
+library("matrixStats")
+library("GenomeInfoDb")
+library("GenomicAlignments")
+library("SummarizedExperiment")
+library("Biobase")
+library("sequencing")
+library("BiocGenerics")
+library("msa")
+path <- "/Users/nqhuynh/Documents/rdna"
+list.files(path)
+fnFs <- sort(list.files(path, pattern="_R1.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_R2.fastq.gz", full.names = TRUE))
+sample.names <- make.unique(sapply(strsplit(basename(fnFs), "_"), `[`, 1))
+sample.names
+sample.namesfull <- sapply(strsplit(basename(fnFs), "_16S"), `[`, 1)
+plotQualityProfile(fnFs[1:2])
+plotQualityProfile(fnRs[1:2])
+head(out)
+errF <- learnErrors(filtFs, multithread=TRUE)
+errR <- learnErrors(filtRs, multithread=TRUE)
+plotErrors(errF, nominalQ=TRUE)
+plotErrors(errR, nominalQ=TRUE)
+derepFs <- derepFastq(filtFs, verbose=TRUE)
+derepRs <- derepFastq(filtRs, verbose=TRUE)
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+dadaFs[[1]]
+dadaRs[[1]]
+head(mergers[[1]])
+seqtab <- makeSequenceTable(mergers)
+dim(seqtab)
+table(nchar(getSequences(seqtab)))
+seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+dim(seqtab.nochim)
+sum(seqtab.nochim)/sum(seqtab)
+getN <- function(x) sum(getUniques(x))
+track <- cbind(out, sapply(dadaFs, getN), sapply(mergers, getN), rowSums(seqtab), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoised", "merged", "tabled", "nonchim")
+rownames(track) <- sample.names
+head(track)
+taxa.print <- taxaSp
+rownames(taxa.print) <- NULL
+head(taxa.print)
+envdata <- read.table("/Users/nqhuynh/Documents/rdna/3/data1.txt", header=TRUE, fill=TRUE, row.names=1, sep="\t", dec=",")
+envdata
+env_Full_names <- rownames(envdata)
+env_Short_names <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`,1))
+env_Names <- cbind(Short_Names = env_Short_names, env_Full_names)
+Sequencing_names <- cbind(Short_Names = sample.names, S_Full_Names = sample.namesfull)
+Name_list <- merge(Sequencing_names, env_Names, all = T, all.x = TRUE)
+View(Name_list)
+write.table(Name_list, "/file directory/Name_list.txt", sep="\t")
+env_Full_names <- rownames(envdata)
+env_Short_names <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`,1))
+env_Names <- cbind(Short_Names = env_Short_names, env_Full_names)
+Sequencing_names <- cbind(Short_Names = sample.names, S_Full_Names = sample.namesfull)
+Name_list <- merge(Sequencing_names, env_Names, all = T, all.x = TRUE)
+View(Name_list)
+rownames(envdata) <- make.unique(sapply(strsplit(rownames(envdata), "_"), `[`, 1))
+rownames(envdata)
+DAT <- sample_data(envdata)
+DAT
+ps1 <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), tax_table(taxaSp))
+ps1 <- merge_phyloseq(ps1, DAT)
+ps1
+#change nom seq/OTU
+taxa_names(ps1)
+taxa_names(ps1) <- paste0("OTU", seq(ntaxa(ps1)))
+# Extract abundance matrix from the phyloseq object
+OTU1 = as(otu_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){OTU1 <- t(OTU1)}
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+# Extract abundance matrix from the phyloseq object
+TAX = as(tax_table(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){TAX <- t(TAX)}
+# Coerce to data.frame
+TAXdf = as.data.frame(TAX)
+# Extract abundance matrix from the phyloseq object
+DAT1 = as(sample_data(ps1), "matrix")
+# transpose if necessary
+if(taxa_are_rows(ps1)){DAT1 <- t(DAT1)}
+DAT1df = as.data.frame(DAT1)
+write.table(OTU1, "/Users/nqhuynh/Documents/1_OTU1.txt", sep="\t")
+write.table(TAX, "/Users/nqhuynh/Documents/1_TAX.txt", sep="\t")
+write.table(DAT1, "/Users/nqhuynh/Documents/1_DAT.txt", sep="\t")
+https://benjjneb.github.io/dada2/tutorial.html
